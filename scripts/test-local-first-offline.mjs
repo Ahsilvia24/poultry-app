@@ -1027,7 +1027,8 @@ assert.equal(keptPlacement.snapshot.serviceForms[0]?.id, "form-1");
 assert.equal(keptPlacement.snapshot.serviceForms[0]?.flockId, "flock-1");
 assert.equal(keptPlacement.snapshot.serviceForms[0]?.payload.grower, "Pat");
 assert.equal(keptPlacement.snapshot.serviceFormDrafts[0]?.payload.notes, "draft");
-assert.equal(keptPlacement.snapshot.followUpCompletions[0]?.label, "Visit");
+// Place moved 08-01 → 09-01, so prior-cycle schedule checkoffs for this flock clear.
+assert.equal(keptPlacement.snapshot.followUpCompletions?.length ?? 0, 0);
 assert.equal(keptPlacement.snapshot.dashboard.farmCards[0]?.lastServiceReportDate, "2026-09-05");
 assert.equal(keptPlacement.snapshot.dashboard.farmCards[0]?.todayMortality, 10);
 assert.equal(keptPlacement.snapshot.dashboard.farmCards[0]?.openIssues, 2);

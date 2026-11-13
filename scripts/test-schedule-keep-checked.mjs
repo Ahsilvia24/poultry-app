@@ -62,11 +62,28 @@ assert.ok(
 );
 
 const uniqueLabel = bindCompletionsToSchedule(
-  [{ dateKey: "2026-09-16", label: "Placement", flockId: "fl2" }],
+  [{ dateKey: "2026-09-15", label: "Placement", flockId: "fl2" }],
   [{ farmId: "f1", date: "2026-09-14", label: "Placement", completedAt: "2026-09-14T15:00:00.000Z" }],
   "f1",
 );
-assert.ok(uniqueLabel.has(completionKey("2026-09-16", "Placement")));
+assert.ok(uniqueLabel.has(completionKey("2026-09-15", "Placement")));
+
+const priorCycle = bindCompletionsToSchedule(
+  [
+    { dateKey: "2026-11-18", label: "Prebrood", flockId: "fl1" },
+    { dateKey: "2026-11-20", label: "Placement", flockId: "fl1" },
+    { dateKey: "2026-11-23", label: "3 Day", flockId: "fl1" },
+    { dateKey: "2026-11-27", label: "7 Day", flockId: "fl1" },
+  ],
+  [
+    { farmId: "f1", flockId: "fl1", date: "2026-06-29", label: "Prebrood", completedAt: "2026-06-29T12:00:00.000Z" },
+    { farmId: "f1", flockId: "fl1", date: "2026-07-01", label: "Placement", completedAt: "2026-07-01T12:00:00.000Z" },
+    { farmId: "f1", flockId: "fl1", date: "2026-07-04", label: "3 Day", completedAt: "2026-07-04T12:00:00.000Z" },
+    { farmId: "f1", flockId: "fl1", date: "2026-07-08", label: "7 Day", completedAt: "2026-07-08T12:00:00.000Z" },
+  ],
+  "f1",
+);
+assert.equal(priorCycle.size, 0, "prior-cycle checkoffs must not rematch onto a new place");
 
 let stored = upsertFollowUpCompletion([], {
   farmId: "f1",

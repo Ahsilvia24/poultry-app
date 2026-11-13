@@ -15,6 +15,7 @@ import {
 } from "@/lib/offline/formPairs";
 import type { ImportEntityGraph } from "@/lib/offline/remapIds";
 import { asDateKey, localNoonFromKey } from "@/lib/offline/dates";
+import { clearFollowUpCompletionsForFlocks } from "@/lib/offline/followUpCompletions";
 import {
   defaultCatchDateKey,
   resolveCatchAfterPlacementChange,
@@ -376,6 +377,7 @@ export function applyPlacementToSnapshot(
   let createdHouses = 0;
   const warnings: string[] = [];
   const touchedFarmIds: string[] = [];
+  const placeChangedFlockIds = new Set<string>();
 
   const graphFarms: ImportEntityGraph["farms"] = [];
 
@@ -476,13 +478,19 @@ export function applyPlacementToSnapshot(
               }
             : hf,
         );
+        if (previousPlacement && previousPlacement !== row.datePlaced) {
+          placeChangedFlockIds.add(occupied.flockId);
+        }
         touchedFlockIds.add(occupied.flockId);
         continue;
       }
       let target = activeFlockOnFarm(flocks, farmId);
+      const priorTargetPlace = target
+        ? asDateKey(target.placementDate) ?? target.placementDate.slice(0, 10)
+        : null;
       const nextCatch = target
         ? resolveCatchAfterPlacementChange({
-            previousPlacementDate: asDateKey(target.placementDate) ?? target.placementDate.slice(0, 10),
+            previousPlacementDate: priorTargetPlace,
             nextPlacementDate: row.datePlaced,
             previousCatchDate: asDateKey(target.projectedCatchDate),
             marketAgeDays: marketAge,
@@ -498,6 +506,8 @@ export function applyPlacementToSnapshot(
         );
         flocks = [...flocks, target];
         createdFlocks += 1;
+      } else if (priorTargetPlace && priorTargetPlace !== row.datePlaced) {
+        placeChangedFlockIds.add(target.id);
       }
       houseFlocks = [
         ...houseFlocks,
@@ -558,16 +568,24 @@ export function applyPlacementToSnapshot(
     }
   }
 
+  const patched = patchDashboardAfterPlacement(
+    snapshot,
+    farms,
+    houses,
+    flocks,
+    houseFlocks,
+    touchedFarmIds,
+  );
   return {
     ok: true,
-    snapshot: patchDashboardAfterPlacement(
-      snapshot,
-      farms,
-      houses,
-      flocks,
-      houseFlocks,
-      touchedFarmIds,
-    ),
+    snapshot: {
+      ...patched,
+      // Prior-cycle checkoffs rematched onto the new place and hid early visits.
+      followUpCompletions: clearFollowUpCompletionsForFlocks(
+        snapshot.followUpCompletions,
+        placeChangedFlockIds,
+      ),
+    },
     createdFarms,
     updatedNames,
     createdFlocks,

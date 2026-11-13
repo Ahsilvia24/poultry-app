@@ -1,5 +1,13 @@
+import { calendarDaysBetween } from "@/lib/app-calendar";
 import { completionKey } from "@/lib/visits/schedule";
 import type { OfflineFollowUpCompletion, OfflineSnapshot } from "@/lib/offline/types";
+
+/** Rematch only covers a small rebuild shift (place/catch edit), not a new flock cycle. */
+const COMPLETION_REMATCH_MAX_DAYS = 1;
+
+function datesNearForRematch(a: string, b: string) {
+  return Math.abs(calendarDaysBetween(a, b)) <= COMPLETION_REMATCH_MAX_DAYS;
+}
 
 export function normalizeScheduleLabel(label: string) {
   return label === "Weight Projection" ? "Weight Proj." : label;
@@ -144,8 +152,10 @@ export function upsertFollowUpCompletion(
 
 /**
  * Map stored checkoffs onto the live schedule. Exact date+label first, then
- * the same flock + label, then a unique label on that farm (covers a 1-day
- * rebuild shift after flock edits).
+ * the same flock + label within ±1 day, then a unique label on that farm within
+ * ±1 day (covers a 1-day rebuild shift after flock edits). Do not rematch
+ * across a new placement cycle — that hid Prebrood/Placement/3/7 Day after
+ * placement import on the same ACTIVE flock.
  */
 export function bindCompletionsToSchedule(
   items: ScheduleBindItem[],
@@ -180,7 +190,8 @@ export function bindCompletionsToSchedule(
       (row) =>
         !used.has(completionRowKey(row.farmId, row.date, row.label)) &&
         row.flockId === item.flockId &&
-        labelsMatch(row.label, item.label),
+        labelsMatch(row.label, item.label) &&
+        datesNearForRematch(row.date, item.dateKey),
     );
     if (matches.length === 1) take(matches[0]!, item.dateKey, item.label);
   }
@@ -190,7 +201,8 @@ export function bindCompletionsToSchedule(
     const open = farmRows.filter(
       (row) =>
         !used.has(completionRowKey(row.farmId, row.date, row.label)) &&
-        labelsMatch(row.label, item.label),
+        labelsMatch(row.label, item.label) &&
+        datesNearForRematch(row.date, item.dateKey),
     );
     const itemsWithLabel = items.filter((row) => labelsMatch(row.label, item.label));
     if (open.length === 1 && itemsWithLabel.length === 1) {
@@ -199,6 +211,17 @@ export function bindCompletionsToSchedule(
   }
 
   return map;
+}
+
+/** Drop schedule checkoffs for flocks whose placement cycle just changed. */
+export function clearFollowUpCompletionsForFlocks(
+  stored: OfflineFollowUpCompletion[] | null | undefined,
+  flockIds: Iterable<string>,
+): OfflineFollowUpCompletion[] | null | undefined {
+  if (stored == null) return stored;
+  const clear = new Set([...flockIds].filter(Boolean));
+  if (clear.size === 0) return stored;
+  return stored.filter((row) => !(row.flockId && clear.has(row.flockId)));
 }
 
 /** Keep local checkoffs when a remote snapshot lands. Seed flags only if none stored. */
