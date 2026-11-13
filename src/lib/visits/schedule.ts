@@ -55,13 +55,18 @@ export function resolveCatchDate(input: {
   actualCatchDate?: Date | null;
   targetMarketAge?: number | null;
 }): Date {
-  if (input.actualCatchDate) return startOfDay(input.actualCatchDate);
-  if (input.projectedCatchDate) return startOfDay(input.projectedCatchDate);
+  const placement = startOfDay(input.placementDate);
   const age =
     input.targetMarketAge != null && input.targetMarketAge > 0
       ? input.targetMarketAge
       : DEFAULT_MARKET_AGE;
-  return startOfDay(addDays(input.placementDate, age));
+  const fallback = startOfDay(addDays(placement, age));
+  // Catch on/before place drops Placement + service days from the schedule.
+  const actual = input.actualCatchDate ? startOfDay(input.actualCatchDate) : null;
+  if (actual && actual > placement) return actual;
+  const projected = input.projectedCatchDate ? startOfDay(input.projectedCatchDate) : null;
+  if (projected && projected > placement) return projected;
+  return fallback;
 }
 
 /** Most recent `weekday` strictly before `date` (never the same day). */
@@ -106,7 +111,10 @@ export function buildFlockVisitSchedule(
   catchDate: Date,
 ): ScheduledVisit[] {
   const placement = startOfDay(placementDate);
-  const catchEnd = startOfDay(catchDate);
+  let catchEnd = startOfDay(catchDate);
+  if (!(catchEnd > placement)) {
+    catchEnd = startOfDay(addDays(placement, DEFAULT_MARKET_AGE));
+  }
   const items: ScheduledVisit[] = [];
 
   const push = (

@@ -8,6 +8,7 @@ const src = readFileSync(join(here, "catchDate.ts"), "utf8");
 
 assert.match(src, /export function resolveCatchAfterPlacementChange/);
 assert.match(src, /export function defaultCatchDateKey/);
+assert.match(src, /export function scheduleCatchDateKey/);
 assert.match(src, /prevCatch <= nextPlacement/);
 assert.match(src, /DEFAULT_PLACEMENT_MARKET_AGE_DAYS = 52/);
 

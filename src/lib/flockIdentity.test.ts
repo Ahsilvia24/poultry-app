@@ -73,6 +73,21 @@ describe("scheduleGroupsForFarm", () => {
     ]);
     assert.equal(groups.length, 2);
   });
+
+  it("replaces a house catch on or before place so Upcoming Visits can populate", () => {
+    const groups = scheduleGroupsForFarm([
+      {
+        id: "flock-a",
+        flockNumber: "B2",
+        placementDate: "2026-11-10",
+        catchDate: "2026-08-22",
+        houses: [{ placementDate: "2026-11-10", catchDate: "2026-08-22" }],
+      },
+    ]);
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0]?.placementDate, "2026-11-10");
+    assert.equal(groups[0]?.catchDate, "2027-01-01");
+  });
 });
 
 describe("dedupeScheduleRows", () => {

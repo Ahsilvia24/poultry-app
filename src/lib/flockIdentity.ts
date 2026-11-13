@@ -1,3 +1,5 @@
+import { scheduleCatchDateKey } from "@/lib/placement-import/catchDate";
+
 function normalizeFlockNumber(value: string): string {
   return value.trim().toUpperCase();
 }
@@ -35,7 +37,10 @@ export function scheduleGroupsForFarm(flocks: FlockScheduleInput[]): FarmSchedul
     numbersWithHouses.add(numberKey);
     for (const house of flock.houses) {
       const placementDate = house.placementDate?.trim() || flock.placementDate;
-      const catchDate = house.catchDate?.trim() || flock.catchDate;
+      const catchDate = scheduleCatchDateKey(
+        placementDate,
+        house.catchDate?.trim() || flock.catchDate,
+      );
       const key = `${numberKey}|${placementDate}|${catchDate}`;
       if (!groups.has(key)) {
         groups.set(key, {
@@ -52,13 +57,14 @@ export function scheduleGroupsForFarm(flocks: FlockScheduleInput[]): FarmSchedul
     if (flock.houses.length > 0) continue;
     const numberKey = normalizeFlockNumber(flock.flockNumber);
     if (numbersWithHouses.has(numberKey)) continue;
-    const key = `${numberKey}|${flock.placementDate}|${flock.catchDate}`;
+    const catchDate = scheduleCatchDateKey(flock.placementDate, flock.catchDate);
+    const key = `${numberKey}|${flock.placementDate}|${catchDate}`;
     if (!groups.has(key)) {
       groups.set(key, {
         flockId: flock.id,
         flockNumber: flock.flockNumber.trim() || flock.flockNumber,
         placementDate: flock.placementDate,
-        catchDate: flock.catchDate,
+        catchDate,
       });
       numbersWithHouses.add(numberKey);
     }
