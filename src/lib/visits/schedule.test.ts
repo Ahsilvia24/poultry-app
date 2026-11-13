@@ -1,10 +1,39 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  buildFlockVisitSchedule,
   completionKey,
   splitScheduleForDashboard,
   type ScheduledVisit,
 } from "./schedule.ts";
+
+describe("buildFlockVisitSchedule ladder", () => {
+  it("includes 1 Day after Placement and before 3 Day", () => {
+    const schedule = buildFlockVisitSchedule(
+      new Date("2026-11-20T12:00:00"),
+      new Date("2027-01-11T12:00:00"),
+    );
+    const labels = schedule.map((visit) => visit.label);
+    const prebrood = labels.indexOf("Prebrood");
+    const placement = labels.indexOf("Placement");
+    const day1 = labels.indexOf("1 Day");
+    const day3 = labels.indexOf("3 Day");
+    const day7 = labels.indexOf("7 Day");
+    assert.ok(prebrood >= 0);
+    assert.ok(placement > prebrood);
+    assert.ok(day1 > placement);
+    assert.ok(day3 > day1);
+    assert.ok(day7 > day3);
+    assert.equal(
+      schedule.find((visit) => visit.label === "1 Day")?.dateKey,
+      "2026-11-21",
+    );
+    assert.equal(
+      schedule.find((visit) => visit.label === "1 Day")?.birdAgeDays,
+      1,
+    );
+  });
+});
 
 const sevenDay: ScheduledVisit = {
   date: new Date(Date.UTC(2026, 8, 10, 12)),

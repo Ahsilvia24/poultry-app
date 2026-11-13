@@ -81,6 +81,7 @@ describe("buildFlockVisitSchedule stale catch", () => {
       new Date("2026-08-22T12:00:00"),
     );
     assert.ok(schedule.some((visit) => visit.label === "Placement"));
+    assert.ok(schedule.some((visit) => visit.label === "1 Day"));
     assert.ok(schedule.some((visit) => visit.label === "3 Day"));
     assert.ok(schedule.some((visit) => visit.label === "7 Day"));
   });

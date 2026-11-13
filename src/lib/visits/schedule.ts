@@ -12,7 +12,7 @@ import { lfoTargetWeekday } from "../lfoSchedule";
 const DEFAULT_MARKET_AGE = 52;
 
 /** Fixed service ages after placement (inclusive of catch filter). */
-const SERVICE_DAY_AGES = [3, 7, 14, 21, 28, 35, 42] as const;
+const SERVICE_DAY_AGES = [1, 3, 7, 14, 21, 28, 35, 42] as const;
 
 /** date-fns getDay(): Sun=0 … Sat=6 */
 const MONDAY = 1;
@@ -103,7 +103,7 @@ export function lfoDate(catchDate: Date): Date | null {
 
 /**
  * Standard service visit schedule:
- * Prebrood (placement − 2), Placement, 3/7/14/21/28/35/42 Day,
+ * Prebrood (placement − 2), Placement, 1/3/7/14/21/28/35/42 Day,
  * plus Weight Projection and LFO from catch weekday rules.
  */
 export function buildFlockVisitSchedule(
@@ -242,7 +242,7 @@ function todayScheduleRank(v: Pick<ScheduledVisit, "kind" | "birdAgeDays" | "lab
     case "PREBROOD":
       return 3;
     case "SERVICE_DAY":
-      return 100 + v.birdAgeDays; // youngest (3) before older (42)
+      return 100 + v.birdAgeDays; // youngest (1) before older (42)
     default:
       return 900 + v.birdAgeDays;
   }

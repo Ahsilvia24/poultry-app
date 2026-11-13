@@ -2,7 +2,7 @@ import { addDaysKey, dateKeyInAppZone, daysBetween, parseDateKey, todayKey } fro
 import { format } from "date-fns";
 import { lfoTargetWeekday } from "./lfoSchedule";
 
-const SERVICE_DAY_AGES = [3, 7, 14, 21, 28, 35, 42] as const;
+const SERVICE_DAY_AGES = [1, 3, 7, 14, 21, 28, 35, 42] as const;
 
 export type ScheduledVisit = {
   dateKey: string;
