@@ -1150,14 +1150,16 @@ assert.equal(
   "2027-01-01",
 );
 const { buildFlockVisitSchedule } = await import(join(root, "src/lib/visits/schedule.ts"));
-const staleBefore = buildFlockVisitSchedule(
+// Schedule build also repairs catch-on/before-place so Upcoming Visits still populate
+// for farms that were imported before catch refresh landed.
+const repairedSchedule = buildFlockVisitSchedule(
   new Date("2026-11-10T12:00:00"),
   new Date("2026-08-22T12:00:00"),
 );
-// Catch before place drops Placement / service days (Prebrood is exempt).
-assert.equal(staleBefore.some((visit) => visit.label === "Placement"), false);
-assert.equal(staleBefore.some((visit) => visit.label === "3 Day"), false);
-assert.ok(staleBefore.some((visit) => visit.label === "Prebrood"));
+assert.ok(repairedSchedule.some((visit) => visit.label === "Prebrood"));
+assert.ok(repairedSchedule.some((visit) => visit.label === "Placement"));
+assert.ok(repairedSchedule.some((visit) => visit.label === "3 Day"));
+assert.ok(repairedSchedule.some((visit) => visit.label === "7 Day"));
 const refreshedSchedule = buildFlockVisitSchedule(
   new Date("2026-11-10T12:00:00"),
   new Date("2027-01-01T12:00:00"),

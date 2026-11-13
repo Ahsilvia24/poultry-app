@@ -49,3 +49,20 @@ export function resolveCatchAfterPlacementChange(input: {
   }
   return prevCatch;
 }
+
+/**
+ * Catch date used to build visit schedules. Stale catches on/before place
+ * (common after a placement sheet lands on an old flock) would otherwise drop
+ * Placement and service days, leaving Upcoming Visits empty once Prebrood is past.
+ */
+export function scheduleCatchDateKey(
+  placementDate: string,
+  catchDate?: string | null,
+  marketAgeDays?: number,
+): string {
+  return resolveCatchAfterPlacementChange({
+    nextPlacementDate: placementDate,
+    previousCatchDate: catchDate,
+    marketAgeDays,
+  });
+}

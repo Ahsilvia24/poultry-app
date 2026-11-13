@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   defaultCatchDateKey,
   resolveCatchAfterPlacementChange,
+  scheduleCatchDateKey,
 } from "./catchDate.ts";
 
 describe("resolveCatchAfterPlacementChange", () => {
@@ -59,5 +60,28 @@ describe("resolveCatchAfterPlacementChange", () => {
       }),
       "2026-12-22",
     );
+  });
+});
+
+describe("scheduleCatchDateKey", () => {
+  it("repairs stale catch used for Upcoming Visits", () => {
+    assert.equal(scheduleCatchDateKey("2026-11-10", "2026-08-22"), "2027-01-01");
+  });
+
+  it("keeps a valid catch after place", () => {
+    assert.equal(scheduleCatchDateKey("2026-11-10", "2026-12-20"), "2026-12-20");
+  });
+});
+
+describe("buildFlockVisitSchedule stale catch", () => {
+  it("still emits Placement and service days when catch is before place", async () => {
+    const { buildFlockVisitSchedule } = await import("../visits/schedule.ts");
+    const schedule = buildFlockVisitSchedule(
+      new Date("2026-11-10T12:00:00"),
+      new Date("2026-08-22T12:00:00"),
+    );
+    assert.ok(schedule.some((visit) => visit.label === "Placement"));
+    assert.ok(schedule.some((visit) => visit.label === "3 Day"));
+    assert.ok(schedule.some((visit) => visit.label === "7 Day"));
   });
 });

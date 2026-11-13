@@ -83,6 +83,9 @@ export function buildFlockVisitSchedule(
   placementDate: string,
   catchDate: string,
 ): ScheduledVisit[] {
+  // Catch on/before place would drop Placement + service days (Prebrood only).
+  const catchEnd =
+    catchDate && catchDate > placementDate ? catchDate : addDaysKey(placementDate, 52);
   const items: ScheduledVisit[] = [];
   const push = (
     dateKey: string,
@@ -90,7 +93,7 @@ export function buildFlockVisitSchedule(
     birdAgeDays: number,
     kind: ScheduledVisit["kind"],
   ) => {
-    if (dateKey > catchDate && kind !== "PREBROOD") return;
+    if (dateKey > catchEnd && kind !== "PREBROOD") return;
     items.push({ dateKey, label, birdAgeDays, kind });
   };
 
@@ -99,14 +102,14 @@ export function buildFlockVisitSchedule(
 
   for (const day of SERVICE_DAY_AGES) {
     const d = addDaysKey(placementDate, day);
-    if (d > catchDate) break;
+    if (d > catchEnd) break;
     push(d, `${day} Day`, day, "SERVICE_DAY");
   }
 
-  const wp = weightProjectDate(catchDate);
+  const wp = weightProjectDate(catchEnd);
   push(wp, "Weight Proj.", daysBetween(placementDate, wp), "WEIGHT_PROJECT");
 
-  const lfo = lfoDate(catchDate);
+  const lfo = lfoDate(catchEnd);
   if (lfo) {
     push(lfo, "LFO", daysBetween(placementDate, lfo), "LFO");
   }
