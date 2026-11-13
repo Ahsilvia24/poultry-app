@@ -1013,14 +1013,15 @@ assert.equal(keptPlacement.snapshot.lfos[0]?.id, "lfo-1");
 assert.equal(keptPlacement.snapshot.issues.length, 0);
 const keptHouse = keptPlacement.snapshot.houseFlocks.find((hf) => hf.id === "hf-1");
 assert.equal(keptHouse?.flockId, "flock-1");
-assert.equal(keptHouse?.catchDate, "2026-09-22");
+// Default catch (old place + 52) shifts with the new placement so service visits stay on schedule.
+assert.equal(keptHouse?.catchDate, "2026-10-23");
 assert.equal(keptHouse?.catchTime, "22:00");
 assert.equal(keptHouse?.placedBirdCount, 21000);
 assert.equal(keptHouse?.placementDate, "2026-09-01");
 assert.equal(keptPlacement.snapshot.flocks.find((flock) => flock.id === "flock-1")?.flockNumber, "A1");
 assert.equal(
   keptPlacement.snapshot.flocks.find((flock) => flock.id === "flock-1")?.projectedCatchDate,
-  "2026-09-22T00:00:00.000Z",
+  "2026-10-23",
 );
 assert.equal(keptPlacement.snapshot.serviceForms[0]?.id, "form-1");
 assert.equal(keptPlacement.snapshot.serviceForms[0]?.flockId, "flock-1");
@@ -1096,10 +1097,81 @@ assert.equal(clashPlacement.snapshot.houseFlocks.find((hf) => hf.id === "hf-1")?
 assert.equal(clashPlacement.snapshot.generatorLogs.find((log) => log.id === "gen-1")?.gen1Hours, 1200);
 assert.equal(clashPlacement.snapshot.mortalities.length, 1);
 
+// Stale catch before the new place used to yield Prebrood-only schedules.
+const staleCatchPlacement = applyPlacementToSnapshot(
+  {
+    ...withGeneratorLog,
+    flocks: [
+      {
+        ...withGeneratorLog.flocks[0],
+        placementDate: "2026-07-01T00:00:00.000Z",
+        projectedCatchDate: "2026-08-22T00:00:00.000Z",
+      },
+    ],
+    houseFlocks: withGeneratorLog.houseFlocks.map((hf) => ({
+      ...hf,
+      placementDate: "2026-07-01",
+      catchDate: "2026-08-22",
+    })),
+  },
+  {
+    selections: [{ key: "12::OAK RIDGE", selected: true }],
+    rows: [
+      {
+        datePlaced: "2026-11-10",
+        farmCode: "12",
+        farmName: "Oak Ridge",
+        flockId: "B2",
+        houseNo: 1,
+        numberSent: 21000,
+      },
+      {
+        datePlaced: "2026-11-10",
+        farmCode: "12",
+        farmName: "Oak Ridge",
+        flockId: "B2",
+        houseNo: 2,
+        numberSent: 20500,
+      },
+    ],
+  },
+);
+assert.equal(staleCatchPlacement.ok, true);
+const refreshedHouse = staleCatchPlacement.snapshot.houseFlocks.find((hf) => hf.id === "hf-1");
+assert.equal(refreshedHouse?.placementDate, "2026-11-10");
+assert.equal(refreshedHouse?.catchDate, "2027-01-01");
+assert.equal(refreshedHouse?.catchTime, "22:00");
+assert.equal(
+  staleCatchPlacement.snapshot.houseFlocks.find((hf) => hf.id === "hf-2")?.catchDate,
+  "2027-01-01",
+);
+assert.equal(
+  staleCatchPlacement.snapshot.flocks.find((flock) => flock.id === "flock-1")?.projectedCatchDate,
+  "2027-01-01",
+);
+const { buildFlockVisitSchedule } = await import(join(root, "src/lib/visits/schedule.ts"));
+const staleBefore = buildFlockVisitSchedule(
+  new Date("2026-11-10T12:00:00"),
+  new Date("2026-08-22T12:00:00"),
+);
+// Catch before place drops Placement / service days (Prebrood is exempt).
+assert.equal(staleBefore.some((visit) => visit.label === "Placement"), false);
+assert.equal(staleBefore.some((visit) => visit.label === "3 Day"), false);
+assert.ok(staleBefore.some((visit) => visit.label === "Prebrood"));
+const refreshedSchedule = buildFlockVisitSchedule(
+  new Date("2026-11-10T12:00:00"),
+  new Date("2027-01-01T12:00:00"),
+);
+assert.ok(refreshedSchedule.some((visit) => visit.label === "Prebrood"));
+assert.ok(refreshedSchedule.some((visit) => visit.label === "Placement"));
+assert.ok(refreshedSchedule.some((visit) => visit.label === "3 Day"));
+assert.ok(refreshedSchedule.some((visit) => visit.label === "7 Day"));
+
 const placementAction = read("src/app/actions/placement-import.ts");
 assert.doesNotMatch(placementAction, /renameKeys/);
 assert.doesNotMatch(placementAction, /flockNumber: nextNumber/);
 assert.doesNotMatch(placementAction, /reclaimId/);
+assert.match(placementAction, /resolveCatchAfterPlacementChange/);
 assert.doesNotMatch(read("src/lib/ensureActiveFlockHouseFlocks.ts"), /houseFlock\.delete/);
 assert.match(importUi, /Logs, checklists/);
 const mobileData = read("mobile/src/repos/data.ts");
@@ -1111,6 +1183,8 @@ assert.doesNotMatch(placementFn, /renameKeys/);
 assert.doesNotMatch(placementFn, /SET flock_number/);
 assert.doesNotMatch(placementFn, /syncFlockDatesAndPrune/);
 assert.doesNotMatch(placementFn, /SET flock_id/);
+assert.match(placementFn, /resolveCatchAfterPlacementChange/);
+assert.match(read("src/lib/offline/applyImport.ts"), /resolveCatchAfterPlacementChange/);
 const ensureFn = mobileData.slice(
   mobileData.indexOf("export function ensureHousesOnActiveFlock"),
   mobileData.indexOf("function syncFlockDatesAndPrune"),

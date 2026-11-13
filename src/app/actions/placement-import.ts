@@ -8,18 +8,27 @@ import { matchPlacementFarmGroups } from "@/lib/placement-import/match";
 import { extractPlacementRows } from "@/lib/placement-import/extract";
 import { farmGroupKey } from "@/lib/placement-import/parse";
 import { coercePlacementRows } from "@/lib/placement-import/rows";
+import {
+  defaultCatchDateKey,
+  resolveCatchAfterPlacementChange,
+} from "@/lib/placement-import/catchDate";
 import { buildPlacementFarmPreview } from "@/lib/schedule-import-preview";
 import type {
   PlacementFarmPreview,
   PlacementRow,
 } from "@/lib/placement-import/types";
 import { getScheduleImport } from "@/lib/schedule-imports";
+import { dateKeyFromDb } from "@/lib/visits/schedule";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { SCHEDULE_IMPORTS_DIR } from "@/lib/schedule-imports";
 import type { ImportEntityGraph } from "@/lib/offline/remapIds";
 
 const DEFAULT_SQ_FT = 29700;
+
+function noonFromDateKey(dateKey: string) {
+  return new Date(`${dateKey}T12:00:00.000Z`);
+}
 
 export type PlacementPreviewResult =
   | {
@@ -284,19 +293,36 @@ export async function applyPlacementImportAction(input: {
     for (const row of byHouse.values()) {
       const houseId = houseByNumber.get(row.houseNo);
       if (!houseId) continue;
-      const placementDate = new Date(`${row.datePlaced}T12:00:00.000Z`);
+      const placementDate = noonFromDateKey(row.datePlaced);
       const occupied = await prisma.houseFlock.findFirst({
         where: {
           houseId,
           flock: { farmId, flockStatus: "ACTIVE", deletedAt: null },
         },
+        include: {
+          flock: { select: { placementDate: true, projectedCatchDate: true } },
+        },
       });
       if (occupied) {
+        const previousPlacement =
+          (occupied.placementDate && dateKeyFromDb(occupied.placementDate)) ||
+          dateKeyFromDb(occupied.flock.placementDate);
+        const previousCatch =
+          (occupied.catchDate && dateKeyFromDb(occupied.catchDate)) ||
+          (occupied.flock.projectedCatchDate &&
+            dateKeyFromDb(occupied.flock.projectedCatchDate)) ||
+          null;
+        const nextCatchKey = resolveCatchAfterPlacementChange({
+          previousPlacementDate: previousPlacement,
+          nextPlacementDate: row.datePlaced,
+          previousCatchDate: previousCatch,
+        });
         await prisma.houseFlock.update({
           where: { id: occupied.id },
           data: {
             placedBirdCount: row.numberSent,
             placementDate,
+            catchDate: noonFromDateKey(nextCatchKey),
           },
         });
         touchedFlockIds.add(occupied.flockId);
@@ -306,12 +332,22 @@ export async function applyPlacementImportAction(input: {
         where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
         orderBy: { placementDate: "asc" },
       });
+      const nextCatchKey = target
+        ? resolveCatchAfterPlacementChange({
+            previousPlacementDate: dateKeyFromDb(target.placementDate),
+            nextPlacementDate: row.datePlaced,
+            previousCatchDate: target.projectedCatchDate
+              ? dateKeyFromDb(target.projectedCatchDate)
+              : null,
+          })
+        : defaultCatchDateKey(row.datePlaced);
       if (!target) {
         target = await prisma.flock.create({
           data: {
             farmId,
             flockNumber: row.flockId,
             placementDate,
+            projectedCatchDate: noonFromDateKey(nextCatchKey),
             initialBirdCount: row.numberSent,
             flockStatus: "ACTIVE",
           },
@@ -324,6 +360,7 @@ export async function applyPlacementImportAction(input: {
           houseId,
           placedBirdCount: row.numberSent,
           placementDate,
+          catchDate: noonFromDateKey(nextCatchKey),
         },
       });
       touchedFlockIds.add(target.id);
@@ -332,17 +369,29 @@ export async function applyPlacementImportAction(input: {
     for (const flockId of touchedFlockIds) {
       const hfs = await prisma.houseFlock.findMany({
         where: { flockId },
-        select: { placementDate: true, placedBirdCount: true },
+        select: { placementDate: true, catchDate: true, placedBirdCount: true },
       });
       if (!hfs.length) continue;
       const dates = hfs
         .map((row) => row.placementDate?.getTime())
         .filter((value): value is number => value != null);
+      const catchKeys = hfs
+        .map((row) => (row.catchDate ? dateKeyFromDb(row.catchDate) : null))
+        .filter((value): value is string => Boolean(value))
+        .sort();
       const total = hfs.reduce((sum, row) => sum + (row.placedBirdCount ?? 0), 0);
+      const placementKey = dates.length
+        ? dateKeyFromDb(new Date(Math.min(...dates)))
+        : null;
+      const projectedCatchKey =
+        catchKeys[0] ?? (placementKey ? defaultCatchDateKey(placementKey) : null);
       await prisma.flock.update({
         where: { id: flockId },
         data: {
-          ...(dates.length ? { placementDate: new Date(Math.min(...dates)) } : {}),
+          ...(placementKey ? { placementDate: noonFromDateKey(placementKey) } : {}),
+          ...(projectedCatchKey
+            ? { projectedCatchDate: noonFromDateKey(projectedCatchKey) }
+            : {}),
           initialBirdCount: total,
         },
       });
