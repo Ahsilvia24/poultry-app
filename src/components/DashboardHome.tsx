@@ -60,7 +60,7 @@ export function DashboardHome({
             Upcoming Visits
           </ReplicaLink>
           {(data?.upcomingSchedule.length ?? 0) === 0 ? (
-            <p className="mt-2 text-[15px] text-stone-500">None in the next 10 days</p>
+            <p className="mt-2 text-[15px] text-stone-500">None in the next 60 days</p>
           ) : (
             <FollowUpsDueList items={data?.upcomingSchedule ?? []} showDate />
           )}
