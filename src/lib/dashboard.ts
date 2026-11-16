@@ -168,7 +168,7 @@ export async function getDashboardData(userId: string) {
     completed: boolean;
     flockAgeDays: number;
   };
-  const UPCOMING_OUTLOOK_DAYS = 10;
+  const UPCOMING_OUTLOOK_DAYS = 60;
   const todaysSchedule: FollowUpRow[] = [];
   const upcomingSchedule: FollowUpRow[] = [];
   const horizon = parseDateKey(addCalendarDays(todayKey, UPCOMING_OUTLOOK_DAYS));

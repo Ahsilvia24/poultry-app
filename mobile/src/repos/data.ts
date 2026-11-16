@@ -46,6 +46,7 @@ import {
 import {
   buildFlockVisitSchedule,
   completionKey,
+  SCHEDULE_OVERDUE_DAYS,
   splitScheduleForDashboard,
   todayScheduleRankFromLabel,
   type CompletionInfo,
@@ -413,7 +414,8 @@ export type DashboardBoard = "dashboard" | "today" | "upcoming" | "catches";
 export function getDashboard(board: DashboardBoard = "dashboard") {
   const db = getDb();
   const today = todayKey();
-  const outlookDays = board === "upcoming" ? 800 : 10;
+  // Home/Today forward window covers a full service ladder; Upcoming board is longer.
+  const outlookDays = board === "upcoming" ? 800 : 60;
   const scheduleExtras = listScheduleExtras();
   const usedExtras = new Set<string>();
   const dismissedExtras = new Set(
@@ -456,7 +458,7 @@ export function getDashboard(board: DashboardBoard = "dashboard") {
     farm: { id: string; farmName: string },
     completions: Map<string, CompletionInfo>,
   ) {
-    const overdueStart = addDaysKey(today, -outlookDays);
+    const overdueStart = addDaysKey(today, -Math.max(outlookDays, SCHEDULE_OVERDUE_DAYS));
     const outlookEnd = addDaysKey(today, outlookDays);
     for (const extra of scheduleExtras) {
       if (extra.farm_id !== farm.id || extra.replaces_date || usedExtras.has(extra.id)) continue;

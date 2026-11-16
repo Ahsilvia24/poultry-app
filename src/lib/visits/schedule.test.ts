@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { addCalendarDays } from "../app-calendar.ts";
 import {
+  buildFlockVisitSchedule,
   completionKey,
+  SCHEDULE_OVERDUE_DAYS,
   splitScheduleForDashboard,
   type ScheduledVisit,
 } from "./schedule.ts";
@@ -87,5 +90,43 @@ describe("splitScheduleForDashboard completions", () => {
     );
     assert.equal(todayItems.length, 0);
     assert.equal(upcomingItems.length, 0);
+  });
+
+  it("keeps a full growout ladder on Today when place was weeks ago (Triple A)", () => {
+    // Placement sheet date for TRIPLE A FARMS; by mid-November every visit is past.
+    const schedule = buildFlockVisitSchedule(
+      new Date("2026-09-03T12:00:00"),
+      new Date("2026-10-25T12:00:00"),
+    );
+    const asOf = new Date("2026-11-16T12:00:00");
+    const shortHorizon = new Date(`${addCalendarDays("2026-11-16", 10)}T12:00:00`);
+    const { today: shortLookback } = splitScheduleForDashboard(
+      schedule,
+      asOf,
+      shortHorizon,
+      new Map(),
+      undefined,
+      "America/Chicago",
+      10,
+    );
+    assert.equal(shortLookback.length, 0);
+
+    const { today: items, upcoming } = splitScheduleForDashboard(
+      schedule,
+      asOf,
+      shortHorizon,
+      new Map(),
+      undefined,
+      "America/Chicago",
+      SCHEDULE_OVERDUE_DAYS,
+    );
+    assert.equal(upcoming.length, 0);
+    const labels = items.map((visit) => visit.label);
+    assert.ok(labels.includes("Prebrood"), labels.join(","));
+    assert.ok(labels.includes("Placement"), labels.join(","));
+    assert.ok(labels.includes("3 Day"), labels.join(","));
+    assert.ok(labels.includes("7 Day"), labels.join(","));
+    assert.ok(labels.includes("42 Day"), labels.join(","));
+    assert.ok(labels.includes("LFO"), labels.join(","));
   });
 });

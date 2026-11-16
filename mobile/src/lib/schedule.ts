@@ -4,6 +4,13 @@ import { lfoTargetWeekday } from "./lfoSchedule";
 
 const SERVICE_DAY_AGES = [3, 7, 14, 21, 28, 35, 42] as const;
 
+/**
+ * Missed Prebrood→LFO visits stay on Today until checked off. A short forward
+ * outlook must not also truncate this lookback — otherwise farms placed weeks
+ * ago (still ACTIVE) show an empty schedule after import.
+ */
+export const SCHEDULE_OVERDUE_DAYS = 90;
+
 export type ScheduledVisit = {
   dateKey: string;
   label: string;
@@ -149,8 +156,9 @@ export function todayScheduleRankFromLabel(label: string): number {
 
 /**
  * Split schedule into today vs upcoming.
- * - Today: events due today, plus recent overdue (uncompleted) visits so missed
- *   service days stay on the list until checked off.
+ * - Today: events due today, plus overdue (uncompleted) visits so missed
+ *   service days stay on the list until checked off. Overdue lookback covers a
+ *   full growout even when the forward horizon is only the next 10–60 days.
  * - Upcoming: after today through horizon.
  * Checking an item keeps it visible (crossed out) for the rest of that local
  * calendar day, then it drops at midnight. Completions from a previous day never
@@ -162,10 +170,11 @@ export function splitScheduleForDashboard(
   horizonDays = 7,
   completions: Map<string, CompletionInfo> = new Map(),
   _now: Date = new Date(),
+  overdueDays: number = SCHEDULE_OVERDUE_DAYS,
 ): { today: DueScheduledVisit[]; upcoming: DueScheduledVisit[] } {
   const endKey = addDaysKey(today, horizonDays);
-  // Missed visits from the same outlook window still belong on Today.
-  const overdueStart = addDaysKey(today, -horizonDays);
+  const lookbackDays = Math.max(horizonDays, Math.max(0, overdueDays));
+  const overdueStart = addDaysKey(today, -lookbackDays);
   const todayItems: DueScheduledVisit[] = [];
   const upcomingItems: DueScheduledVisit[] = [];
 

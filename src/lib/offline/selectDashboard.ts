@@ -37,6 +37,7 @@ import {
   dateKeyFromDb,
   parseDateKey,
   resolveCatchDate,
+  SCHEDULE_OVERDUE_DAYS,
   splitScheduleForDashboard,
   todayScheduleRankFromLabel,
 } from "@/lib/visits/schedule";
@@ -46,7 +47,8 @@ type ScheduleRow = DashboardData["todaysSchedule"][number];
 type CatchRow = DashboardData["upcomingCatches"][number];
 type FarmCard = DashboardData["farmCards"][number];
 
-const UPCOMING_OUTLOOK_DAYS = 10;
+/** Home Upcoming lists the service ladder, not only the next week-plus. */
+const UPCOMING_OUTLOOK_DAYS = 60;
 const CATCH_HORIZON_DAYS = 12;
 const FULL_OUTLOOK_DAYS = 800;
 
@@ -338,7 +340,10 @@ export function rebuildDashboardScheduleFromReplica(
         ]
       : undefined,
   );
-  const overdueStart = addCalendarDays(todayKey, -outlookDays);
+  const overdueStart = addCalendarDays(
+    todayKey,
+    -Math.max(outlookDays, SCHEDULE_OVERDUE_DAYS),
+  );
   const endKey = addCalendarDays(todayKey, outlookDays);
 
   function pushHandVisits(farm: { id: string; farmName: string }) {

@@ -358,7 +358,7 @@ export default function DashboardScreen() {
                 </Text>
               </Pressable>
               {data.upcomingSchedule.length === 0 ? (
-                <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 10 days</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 60 days</Text>
               ) : (
                 <ScrollableScheduleList>
                   {data.upcomingSchedule.map((item) => {

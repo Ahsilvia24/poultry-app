@@ -33,7 +33,8 @@ const thursdayCatch = nextWeekday(todayNoon, 4, 20);
 const mondayCatch = addDays(thursdayCatch, 4);
 const thursdayKey = keyFrom(thursdayCatch);
 const mondayKey = keyFrom(mondayCatch);
-const farVisit = keyFrom(addDays(todayNoon, 30));
+// Beyond the home Upcoming window (60 days); still inside the full Upcoming board.
+const farVisit = keyFrom(addDays(todayNoon, 75));
 
 function dateOf(rows, label) {
   return rows.find((row) => row.label === label)?.date ?? null;
@@ -322,7 +323,7 @@ assert.match(mobileBoard, /board === "catches"/);
 assert.doesNotMatch(mobileBoard, /updateHouse|catchDate/);
 const mobileData = read("mobile/src/repos/data.ts");
 assert.match(mobileData, /export function getDashboard\(board: DashboardBoard = "dashboard"\)/);
-assert.match(mobileData, /board === "upcoming" \? 800 : 10/);
+assert.match(mobileData, /board === "upcoming" \? 800 : 60/);
 assert.match(mobileData, /board === "catches" \? null/);
 assert.match(mobileData, /upcomingDeduped\.filter\(\(row\) => row\.date > today\)/);
 assert.match(mobileData, /export function ensureSchedulePlace/);
