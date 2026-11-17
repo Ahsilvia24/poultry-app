@@ -1,5 +1,6 @@
 import { format } from "date-fns";
-import { addCalendarDays, appToday, appTodayKey } from "@/lib/app-calendar";
+import { addCalendarDays, appToday, appTodayKey, calendarDaysBetween } from "@/lib/app-calendar";
+import { scheduleCatchDateKey } from "@/lib/placement-import/catchDate";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import {
   addCatchHouseNumber,
@@ -27,6 +28,7 @@ import {
   daysSincePlacement,
   isRisingThreeDays,
   projectedHeadCountAtCatch,
+  projectedMortalityAtCatch,
   resolveMortalityStatus,
   summarizeForDate,
   sumMortalityLast7Days,
@@ -186,13 +188,12 @@ export function rebuildFarmCardsFromReplica(
     let rising = false;
     let hasTodayEntry = false;
     let projectedHead = 0;
-    let projectedMortExtra = 0;
+    let projectedMort = 0;
     let activeHouseCount = 0;
     const weeklyTotals = new Map<number, number>();
 
     for (const flock of activeFlocks) {
-      const catchDate = localNoonFromKey(flockCatchKey(flock));
-      const daysUntilCatch = Math.max(0, daysSincePlacement(today, catchDate, timeZone));
+      const flockCatch = flockCatchKey(flock);
       const hfs = (snapshot.houseFlocks ?? []).filter((hf) => hf.flockId === flock.id);
       for (const hf of hfs) {
         activeHouseCount += 1;
@@ -209,12 +210,18 @@ export function rebuildFarmCardsFromReplica(
         if (morts.some((row) => dateKeyFromDb(row.mortalityDate) === todayKey)) {
           hasTodayEntry = true;
         }
-        const avgDaily = averageDailyMortalityLast7Days(morts, today);
-        projectedHead += projectedHeadCountAtCatch(metrics.remaining, avgDaily, daysUntilCatch);
-        projectedMortExtra += avgDaily * daysUntilCatch;
-        const housePlacement = localNoonFromKey(
-          asDateKey(hf.placementDate) ?? flockPlaceKey(flock),
+        const housePlaceKey = asDateKey(hf.placementDate) ?? flockPlaceKey(flock);
+        const houseCatchKey = scheduleCatchDateKey(
+          housePlaceKey,
+          asDateKey(hf.catchDate) || flockCatch,
+          flock.targetMarketAge,
         );
+        const daysUntilCatch = Math.max(0, calendarDaysBetween(todayKey, houseCatchKey));
+        const avgDaily = averageDailyMortalityLast7Days(morts, today);
+        // Per-house catch + round so farm Proj. Mort matches the house tiles.
+        projectedHead += projectedHeadCountAtCatch(metrics.remaining, avgDaily, daysUntilCatch);
+        projectedMort += projectedMortalityAtCatch(metrics.cumulative, avgDaily, daysUntilCatch);
+        const housePlacement = localNoonFromKey(housePlaceKey);
         for (const week of weeklyMortalityByPlacement(housePlacement, morts, today)) {
           weeklyTotals.set(week.week, (weeklyTotals.get(week.week) ?? 0) + week.total);
         }
@@ -258,8 +265,7 @@ export function rebuildFarmCardsFromReplica(
       todayMortality: todayMort,
       sevenDayMortality: sevenMort,
       projectedHeadCount: activeFlocks.length > 0 ? projectedHead : null,
-      projectedMortality:
-        activeFlocks.length > 0 ? Math.max(0, Math.round(cum + projectedMortExtra)) : null,
+      projectedMortality: activeFlocks.length > 0 ? projectedMort : null,
       weeklyMortality: Array.from(weeklyTotals.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([week, total]) => ({ week, total })),

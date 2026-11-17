@@ -7,6 +7,7 @@ import {
   daysSincePlacement,
   isRisingThreeDays,
   projectedHeadCountAtCatch,
+  projectedMortalityAtCatch,
   resolveMortalityStatus,
   summarizeForDate,
   weeklyMortalityByPlacement,
@@ -14,6 +15,7 @@ import {
 import { asDate, asDateKey, asDateRequired, localNoonFromKey } from "@/lib/offline/dates";
 import { indexHouseFlocksByHouseId } from "@/lib/mortalityHouses";
 import type { OfflineSnapshot } from "@/lib/offline/types";
+import { scheduleCatchDateKey } from "@/lib/placement-import/catchDate";
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
 import {
   formatHouseList,
@@ -198,23 +200,23 @@ export function selectFarmDetail(
     const houseFlock = matched?.flock ?? null;
     const placementDate =
       noonFromKey(hf?.placementDate) ?? noonFromKey(houseFlock?.placementDate) ?? null;
-    const catchDate = hf?.catchDate
-      ? noonFromKey(hf.catchDate)
-      : houseFlock && placementDate
-        ? resolveCatchDate({
-            placementDate,
-            projectedCatchDate: asDate(houseFlock.projectedCatchDate),
-            actualCatchDate: asDate(houseFlock.actualCatchDate),
-            targetMarketAge: houseFlock.targetMarketAge,
-          })
-        : houseFlock
-          ? resolveCatchDate({
-              placementDate: asDateRequired(houseFlock.placementDate),
-              projectedCatchDate: asDate(houseFlock.projectedCatchDate),
-              actualCatchDate: asDate(houseFlock.actualCatchDate),
-              targetMarketAge: houseFlock.targetMarketAge,
-            })
-          : null;
+    const flockCatch = houseFlock
+      ? resolveCatchDate({
+          placementDate: placementDate ?? asDateRequired(houseFlock.placementDate),
+          projectedCatchDate: asDate(houseFlock.projectedCatchDate),
+          actualCatchDate: asDate(houseFlock.actualCatchDate),
+          targetMarketAge: houseFlock.targetMarketAge,
+        })
+      : null;
+    const catchDate = (() => {
+      if (!placementDate) return flockCatch;
+      const placeKey = asDateKey(placementDate) ?? format(placementDate, "yyyy-MM-dd");
+      const rawCatch =
+        (hf?.catchDate ? asDateKey(hf.catchDate) : null) ||
+        (flockCatch ? format(flockCatch, "yyyy-MM-dd") : null);
+      if (!rawCatch) return null;
+      return noonFromKey(scheduleCatchDateKey(placeKey, rawCatch, houseFlock?.targetMarketAge));
+    })();
     const morts = (snapshot.mortalities ?? [])
       .filter((row) => row.houseFlockId === hf?.id && !row.isDraft)
       .map((row) => ({
@@ -233,7 +235,7 @@ export function selectFarmDetail(
         : null;
     const projectedMortality =
       metrics && daysUntilCatch != null && hf
-        ? Math.max(0, Math.round(metrics.cumulative + avgDaily * daysUntilCatch))
+        ? projectedMortalityAtCatch(metrics.cumulative, avgDaily, daysUntilCatch)
         : null;
     const rising = hf ? isRisingThreeDays(morts, today) : false;
     const status = metrics
