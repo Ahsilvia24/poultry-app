@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { subDays } from "date-fns";
-import { addCalendarDays, appToday, appTodayKey } from "@/lib/app-calendar";
+import { addCalendarDays, appToday, appTodayKey, calendarDaysBetween } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import {
   DEFAULT_THRESHOLDS,
@@ -9,10 +9,12 @@ import {
   sumMortalityLast7Days,
   isRisingThreeDays,
   projectedHeadCountAtCatch,
+  projectedMortalityAtCatch,
   resolveMortalityStatus,
   summarizeForDate,
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
+import { scheduleCatchDateKey } from "@/lib/placement-import/catchDate";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/session-user";
 import type { FarmCardSummary, ThresholdSettings } from "@/types";
@@ -204,7 +206,7 @@ export async function getDashboardData(userId: string) {
     let cum = 0;
     let remaining = 0;
     let projectedHead = 0;
-    let projectedMortExtra = 0;
+    let projectedMort = 0;
     let dailyPct = 0;
     let sevenPct = 0;
     let rising = false;
@@ -318,8 +320,10 @@ export async function getDashboardData(userId: string) {
         });
       }
 
-      const catchDate = resolveCatchDate(flock);
-      const daysUntilCatch = Math.max(0, daysSincePlacement(today, catchDate, timeZone));
+      const flockCatchKey =
+        (flock.actualCatchDate && dateKeyFromDb(flock.actualCatchDate)) ||
+        (flock.projectedCatchDate && dateKeyFromDb(flock.projectedCatchDate)) ||
+        dateKeyFromDb(resolveCatchDate(flock));
 
       for (const hf of flock.houseFlocks) {
         activeHouseCount += 1;
@@ -335,9 +339,16 @@ export async function getDashboardData(userId: string) {
         if (hf.mortalities.some((m) => dateKeyFromDb(m.mortalityDate) === todayKey)) {
           hasTodayEntry = true;
         }
+        const housePlaceKey = dateKeyFromDb(hf.placementDate ?? flock.placementDate);
+        const houseCatchKey = scheduleCatchDateKey(
+          housePlaceKey,
+          (hf.catchDate && dateKeyFromDb(hf.catchDate)) || flockCatchKey,
+          flock.targetMarketAge,
+        );
+        const daysUntilCatch = Math.max(0, calendarDaysBetween(todayKey, houseCatchKey));
         const avgDaily = averageDailyMortalityLast7Days(hf.mortalities, today);
         projectedHead += projectedHeadCountAtCatch(metrics.remaining, avgDaily, daysUntilCatch);
-        projectedMortExtra += avgDaily * daysUntilCatch;
+        projectedMort += projectedMortalityAtCatch(metrics.cumulative, avgDaily, daysUntilCatch);
         for (const week of weeklyMortalityByPlacement(
           hf.placementDate ?? flock.placementDate,
           hf.mortalities,
@@ -383,7 +394,7 @@ export async function getDashboardData(userId: string) {
       todayMortality: todayMort,
       sevenDayMortality: sevenMort,
       projectedHeadCount: active ? projectedHead : null,
-      projectedMortality: active ? Math.max(0, Math.round(cum + projectedMortExtra)) : null,
+      projectedMortality: active ? projectedMort : null,
       weeklyMortality: Array.from(weeklyTotals.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([week, total]) => ({ week, total })),

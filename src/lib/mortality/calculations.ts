@@ -295,9 +295,10 @@ export function summarizeForDate(
 }
 
 /**
- * Total loss over the last 7 calendar days ending on `asOfDate`
- * (missing days count as 0). Date keys stay on the stored civil day.
- * Local formatting of a UTC midnight would drop "today" in US timezones.
+ * Sum of the last 7 daily mortality boxes ending on `asOfDate`.
+ * Blank / missing days count as 0 — always 7 boxes, never skip empties.
+ * Date keys stay on the stored civil day (local formatting of a UTC midnight
+ * would drop "today" in US timezones).
  */
 export function sumMortalityLast7Days(
   records: MortalityRecordLike[],
@@ -317,8 +318,8 @@ export function sumMortalityLast7Days(
 }
 
 /**
- * Average daily loss over the last 7 calendar days ending on `asOfDate`
- * (missing days count as 0).
+ * Daily average for Proj. Mortality: always (sum of last 7 daily boxes) ÷ 7.
+ * One filled day and six blanks → that day ÷ 7 (blanks are 0, divisor stays 7).
  */
 export function averageDailyMortalityLast7Days(
   records: MortalityRecordLike[],
@@ -345,6 +346,20 @@ export function projectedHeadCountAtCatch(
       remaining - avgDailyMortality * days - CATCH_CREW_AND_TRANSIT_LOSS_PER_HOUSE,
     ),
   );
+}
+
+/**
+ * Projected cumulative loss at catch for one house:
+ * today's cumulative + (daily avg of last 7 boxes × each remaining day until that house's catch).
+ * Catch-crew / transit birds stay on PHC only — not double-counted here.
+ */
+export function projectedMortalityAtCatch(
+  cumulative: number,
+  avgDailyMortality: number,
+  daysUntilCatch: number,
+): number {
+  const days = Math.max(0, daysUntilCatch);
+  return Math.max(0, Math.round(cumulative + avgDailyMortality * days));
 }
 
 export function resolveMortalityStatus(

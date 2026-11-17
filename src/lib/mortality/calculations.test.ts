@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { MortalityRecordLike } from "@/types";
-import { buildMortalitySummaries, summarizeForDate, sumMortalityLast7Days } from "./calculations.ts";
+import {
+  averageDailyMortalityLast7Days,
+  buildMortalitySummaries,
+  projectedMortalityAtCatch,
+  summarizeForDate,
+  sumMortalityLast7Days,
+} from "./calculations.ts";
 
 function row(mortalityDate: Date | string, dailyMortalityCount: number, birdAgeInDays: number): MortalityRecordLike {
   return {
@@ -48,5 +54,44 @@ describe("sumMortalityLast7Days", () => {
     const withEdge = [...dayTwo, row("2026-10-16", 10, 0)];
     assert.equal(sumMortalityLast7Days(withEdge, today), 653);
     assert.equal(sumMortalityLast7Days([...withEdge, row("2026-10-15", 9, 0)], today), 653);
+  });
+});
+
+describe("averageDailyMortalityLast7Days", () => {
+  it("always divides the last seven boxes by 7, even with six blanks", () => {
+    const today = utcDay(2026, 11, 17);
+    // Only one filled box in the window; the other six are blank → 70 / 7 = 10.
+    const oneFilled = [row(utcDay(2026, 11, 17), 70, 40)];
+    assert.equal(sumMortalityLast7Days(oneFilled, today), 70);
+    assert.equal(averageDailyMortalityLast7Days(oneFilled, today), 10);
+  });
+});
+
+describe("projectedMortalityAtCatch", () => {
+  it("adds last-7 avg daily loss through the house catch day", () => {
+    const today = utcDay(2026, 10, 22);
+    const records = [
+      row(utcDay(2026, 10, 20), 80, 0),
+      row(utcDay(2026, 10, 21), 120, 1),
+      row(utcDay(2026, 10, 22), 443, 2),
+    ];
+    const summary = summarizeForDate(20_000, records, today);
+    const avgDaily = averageDailyMortalityLast7Days(records, today);
+    assert.equal(avgDaily, 643 / 7);
+    assert.equal(projectedMortalityAtCatch(summary.cumulative, avgDaily, 10), Math.round(643 + (643 / 7) * 10));
+  });
+
+  it("applies one-filled-day average to each remaining day of the flock", () => {
+    const today = utcDay(2026, 11, 17);
+    const records = [row(utcDay(2026, 11, 17), 70, 40)];
+    const avgDaily = averageDailyMortalityLast7Days(records, today);
+    assert.equal(avgDaily, 10);
+    // 70 cumulative so far + 10/day × 5 days left → 120
+    assert.equal(projectedMortalityAtCatch(70, avgDaily, 5), 120);
+  });
+
+  it("stays at cumulative when catch is today or past", () => {
+    assert.equal(projectedMortalityAtCatch(500, 40, 0), 500);
+    assert.equal(projectedMortalityAtCatch(500, 40, -3), 500);
   });
 });

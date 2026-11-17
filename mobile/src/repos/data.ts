@@ -55,6 +55,7 @@ import {
 import {
   defaultCatchDateKey,
   resolveCatchAfterPlacementChange,
+  scheduleCatchDateKey,
 } from "../lib/placementImport/catchDate";
 import { matchPlacementFarmGroups } from "../lib/placementImport/match";
 import { farmGroupKey } from "../lib/placementImport/parse";
@@ -142,14 +143,12 @@ function summarizeHouse(
     if (r.mortality_date === asOf) today += loss;
   }
 
+  // Last 7 daily boxes ending on asOf; blank days count as 0 (always ÷ 7 later).
   for (let i = 0; i < 7; i++) {
     const key = addDaysKey(asOf, -i);
-    for (const r of records) {
-      if (place && r.mortality_date < place) continue;
-      if (r.mortality_date === key) {
-        sevenDay += calcTotalDailyLoss(r.daily_mortality_count, r.cull_count);
-      }
-    }
+    if (place && key < place) continue;
+    const r = byDate.get(key);
+    if (r) sevenDay += calcTotalDailyLoss(r.daily_mortality_count, r.cull_count);
   }
 
   for (let i = 0; i < 3; i++) {
@@ -587,10 +586,12 @@ export function getDashboard(board: DashboardBoard = "dashboard") {
       placement_date: string | null;
       flock_placement: string;
       flock_catch: string | null;
+      flock_actual_catch: string | null;
       house_number: number | null;
     }>(
       `SELECT hf.id, hf.flock_id, hf.placed_bird_count, hf.catch_date, hf.catch_time, hf.placement_date,
               f.placement_date as flock_placement, f.projected_catch_date as flock_catch,
+              f.actual_catch_date as flock_actual_catch,
               h.house_number
        FROM house_flocks hf
        JOIN flocks f ON f.id = hf.flock_id
@@ -635,10 +636,13 @@ export function getDashboard(board: DashboardBoard = "dashboard") {
       else if (s.status === "High" && worst !== "Critical") worst = "High";
       else if (s.status === "Watch" && worst === "Normal") worst = "Watch";
 
-      const houseCatch =
+      const houseCatch = scheduleCatchDateKey(
+        housePlacement,
         hf.catch_date?.trim() ||
-        hf.flock_catch ||
-        addDaysKey(housePlacement, 52);
+          hf.flock_actual_catch?.trim() ||
+          hf.flock_catch?.trim() ||
+          null,
+      );
       const houseCatchTime = hf.catch_time?.trim() || null;
       const houseNumber = hf.house_number ?? null;
       const catchKey = `${farm.id}|${houseNumber ?? ""}|${houseCatch}`;
@@ -660,18 +664,17 @@ export function getDashboard(board: DashboardBoard = "dashboard") {
         });
       }
       const daysUntilCatch = daysUntilDateKey(today, houseCatch);
-      if (daysUntilCatch != null) {
-        hasProjection = true;
-        const avgDaily = s.sevenDay / 7;
-        projectedHeadSum += Math.max(
-          0,
-          Math.round(s.remaining - avgDaily * daysUntilCatch - 150),
-        );
-        projectedMortSum += Math.max(
-          0,
-          Math.round(s.cumulative + avgDaily * daysUntilCatch),
-        );
-      }
+      hasProjection = true;
+      // Always (sum of last 7 daily boxes) ÷ 7 — blanks are 0, never ÷ entered days.
+      const avgDaily = s.sevenDay / 7;
+      projectedHeadSum += Math.max(
+        0,
+        Math.round(s.remaining - avgDaily * daysUntilCatch - 150),
+      );
+      projectedMortSum += Math.max(
+        0,
+        Math.round(s.cumulative + avgDaily * daysUntilCatch),
+      );
     }
 
     if (hfs.length === 0) {
@@ -933,9 +936,11 @@ export function getFarmDetail(farmId: string) {
     flock_number: string;
     placement_date: string;
     projected_catch_date: string | null;
+    actual_catch_date: string | null;
     growth_rate_lbs_per_day: number | null;
   }>(
-    `SELECT id, flock_number, placement_date, projected_catch_date, growth_rate_lbs_per_day
+    `SELECT id, flock_number, placement_date, projected_catch_date, actual_catch_date,
+            growth_rate_lbs_per_day
      FROM flocks
      WHERE farm_id = ? AND flock_status = 'ACTIVE'
      ORDER BY placement_date ASC, flock_number ASC`,
@@ -978,17 +983,22 @@ export function getFarmDetail(farmId: string) {
     );
     const houseFlock = hf ? flockById.get(hf.flock_id) ?? null : null;
     const flockResolvedCatch = houseFlock
-      ? (houseFlock.projected_catch_date ?? addDaysKey(houseFlock.placement_date, 52))
+      ? houseFlock.actual_catch_date?.trim() ||
+        houseFlock.projected_catch_date ||
+        addDaysKey(houseFlock.placement_date, 52)
       : null;
 
     const housePlacementDate = hf
       ? hf.placement_date?.trim() || houseFlock?.placement_date || null
       : null;
-    // Default catch = house placement + 52 days (editable per house).
-    const houseCatchDate = hf
-      ? hf.catch_date?.trim() ||
-        (housePlacementDate ? addDaysKey(housePlacementDate, 52) : flockResolvedCatch)
-      : null;
+    // House catch when set; otherwise flock actual/projected, repaired if stale.
+    const houseCatchDate =
+      hf && housePlacementDate
+        ? scheduleCatchDateKey(
+            housePlacementDate,
+            hf.catch_date?.trim() || flockResolvedCatch,
+          )
+        : null;
     const houseAgeDays =
       housePlacementDate != null
         ? daysSincePlacement(housePlacementDate, today)
@@ -1015,6 +1025,7 @@ export function getFarmDetail(farmId: string) {
       summary = summarizeHouse(hf.placed_bird_count, records, today, housePlacementDate);
     }
 
+    // Always (sum of last 7 daily boxes) ÷ 7 — blanks are 0, never ÷ entered days.
     const avgDaily = summary.sevenDay / 7;
     const projectedHeadCount =
       houseDaysUntilCatch != null
