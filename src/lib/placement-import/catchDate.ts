@@ -28,7 +28,7 @@ export function resolveCatchAfterPlacementChange(input: {
   previousPlacementDate?: string | null;
   nextPlacementDate: string;
   previousCatchDate?: string | null;
-  marketAgeDays?: number;
+  marketAgeDays?: number | null;
 }): string {
   const nextPlacement = input.nextPlacementDate.trim();
   const marketAge =
@@ -58,7 +58,7 @@ export function resolveCatchAfterPlacementChange(input: {
 export function scheduleCatchDateKey(
   placementDate: string,
   catchDate?: string | null,
-  marketAgeDays?: number,
+  marketAgeDays?: number | null,
 ): string {
   return resolveCatchAfterPlacementChange({
     nextPlacementDate: placementDate,

@@ -217,8 +217,8 @@ export function bindCompletionsToSchedule(
 export function clearFollowUpCompletionsForFlocks(
   stored: OfflineFollowUpCompletion[] | null | undefined,
   flockIds: Iterable<string>,
-): OfflineFollowUpCompletion[] | null | undefined {
-  if (stored == null) return stored;
+): OfflineFollowUpCompletion[] | undefined {
+  if (stored == null) return undefined;
   const clear = new Set([...flockIds].filter(Boolean));
   if (clear.size === 0) return stored;
   return stored.filter((row) => !(row.flockId && clear.has(row.flockId)));
