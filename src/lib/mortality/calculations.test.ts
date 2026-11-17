@@ -8,6 +8,7 @@ import {
   projectedMortalityAtCatch,
   summarizeForDate,
   sumMortalityLast7Days,
+  sumMortalityLastEnteredDays,
 } from "./calculations.ts";
 
 function row(mortalityDate: Date | string, dailyMortalityCount: number, birdAgeInDays: number): MortalityRecordLike {
@@ -59,55 +60,47 @@ describe("sumMortalityLast7Days", () => {
 });
 
 describe("averageDailyMortalityLast7Days", () => {
-  it("always divides the last seven boxes by 7, even with six blanks", () => {
+  it("always divides entered days by 7, even with only one filled day", () => {
     const today = utcDay(2026, 11, 17);
-    // Only one filled box in the window; the other six are blank → 70 / 7 = 10.
-    const oneFilled = [row(utcDay(2026, 11, 17), 70, 40)];
-    assert.equal(sumMortalityLast7Days(oneFilled, today), 70);
+    const oneFilled = [row(utcDay(2026, 11, 14), 70, 40)];
+    assert.equal(sumMortalityLastEnteredDays(oneFilled, today, 7), 70);
     assert.equal(averageDailyMortalityLast7Days(oneFilled, today), 10);
   });
 
-  it("ends the window on the last entered day when today has no data", () => {
+  it("uses the last 7 entered days, skipping blank calendar gaps", () => {
     const today = utcDay(2026, 11, 17);
-    // Last entry Nov 14; do not dilute with blank Nov 15–17.
-    const behind = [
-      row(utcDay(2026, 11, 12), 10, 35),
-      row(utcDay(2026, 11, 13), 20, 36),
-      row(utcDay(2026, 11, 14), 40, 37),
+    // Full Wk6-style week totaling 133, then empty days through today (Wk7 blank).
+    const weekSix = [
+      row(utcDay(2026, 11, 7), 19, 36),
+      row(utcDay(2026, 11, 8), 19, 37),
+      row(utcDay(2026, 11, 9), 19, 38),
+      row(utcDay(2026, 11, 10), 19, 39),
+      row(utcDay(2026, 11, 11), 19, 40),
+      row(utcDay(2026, 11, 12), 19, 41),
+      row(utcDay(2026, 11, 13), 19, 42),
     ];
-    assert.equal(lastEnteredMortalityDateKey(behind, today), "2026-11-14");
-    // Window = Nov 8–14: only 10+20+40 entered → 70 / 7
-    assert.equal(averageDailyMortalityLast7Days(behind, today), 10);
-    // Ending on today would still be 70/7 here, so pin a case where trailing blanks matter:
-    const denser = [
-      row(utcDay(2026, 11, 8), 7, 31),
-      row(utcDay(2026, 11, 9), 7, 32),
-      row(utcDay(2026, 11, 10), 7, 33),
-      row(utcDay(2026, 11, 11), 7, 34),
-      row(utcDay(2026, 11, 12), 7, 35),
-      row(utcDay(2026, 11, 13), 7, 36),
-      row(utcDay(2026, 11, 14), 7, 37),
+    assert.equal(sumMortalityLastEnteredDays(weekSix, today, 7), 133);
+    assert.equal(averageDailyMortalityLast7Days(weekSix, today), 19);
+    // Calendar window ending today only catches Nov 11–13 (57) — the photo dilution bug.
+    assert.equal(sumMortalityLast7Days(weekSix, today), 57);
+    assert.equal(lastEnteredMortalityDateKey(weekSix, today), "2026-11-13");
+  });
+
+  it("matches House 1 photo: 133/week × 8 days left on top of cumulative", () => {
+    const today = utcDay(2026, 11, 17);
+    const weekSix = [
+      row(utcDay(2026, 11, 7), 19, 36),
+      row(utcDay(2026, 11, 8), 19, 37),
+      row(utcDay(2026, 11, 9), 19, 38),
+      row(utcDay(2026, 11, 10), 19, 39),
+      row(utcDay(2026, 11, 11), 19, 40),
+      row(utcDay(2026, 11, 12), 19, 41),
+      row(utcDay(2026, 11, 13), 19, 42),
     ];
-    // Ending Nov 14 → 49/7 = 7. Ending today would still be 49/7.
-    assert.equal(averageDailyMortalityLast7Days(denser, today), 7);
-    // Add older day outside Nov 8–14; still ignored when window ends on last entry.
-    const withOlder = [...denser, row(utcDay(2026, 11, 7), 100, 30)];
-    assert.equal(averageDailyMortalityLast7Days(withOlder, today), 7);
-    // If window wrongly ended on today (Nov 17), Nov 7 would still be out — use a shift:
-    // Last entry Nov 10 with full week Nov 4–10; today Nov 17 would pull Nov 11–17 empties if wrong.
-    const earlyWeek = [
-      row(utcDay(2026, 11, 4), 14, 27),
-      row(utcDay(2026, 11, 5), 14, 28),
-      row(utcDay(2026, 11, 6), 14, 29),
-      row(utcDay(2026, 11, 7), 14, 30),
-      row(utcDay(2026, 11, 8), 14, 31),
-      row(utcDay(2026, 11, 9), 14, 32),
-      row(utcDay(2026, 11, 10), 14, 33),
-    ];
-    assert.equal(lastEnteredMortalityDateKey(earlyWeek, today), "2026-11-10");
-    assert.equal(averageDailyMortalityLast7Days(earlyWeek, today), 14); // 98/7
-    // Wrong (end on today): Nov 11–17 all blank → 0
-    assert.equal(sumMortalityLast7Days(earlyWeek, today), 0);
+    const avgDaily = averageDailyMortalityLast7Days(weekSix, today);
+    assert.equal(avgDaily, 19);
+    // Photo showed only +38; correct is 1521 + 19×8 = 1673.
+    assert.equal(projectedMortalityAtCatch(1521, avgDaily, 8), 1673);
   });
 });
 

@@ -98,8 +98,9 @@ function daysUntilDateKey(fromKey: string, toKey: string): number {
 }
 
 /**
- * Proj. Mortality daily avg: last 7 daily boxes ending on the latest entered day
- * (not today when entry is behind). Blanks inside the window count as 0; always ÷ 7.
+ * Proj. Mortality daily avg: sum of the last 7 days that have data entered ÷ 7.
+ * Blank calendar days are skipped so an empty current week does not dilute the
+ * prior week (e.g. Wk6 133 → ~19/day). Fewer than 7 entered days still ÷ 7.
  */
 function averageDailyMortalityLast7Entered(
   records: MortRow[],
@@ -107,25 +108,18 @@ function averageDailyMortalityLast7Entered(
   placementDate?: string | null,
 ): number {
   const place = placementDate?.trim() || null;
-  const byDate = new Map<string, MortRow>();
+  const byDate = new Map<string, number>();
   for (const r of records) {
     if (!r.mortality_date) continue;
     const key = r.mortality_date.slice(0, 10);
     if (place && key < place) continue;
     if (key > asOf) continue;
-    byDate.set(key, r);
+    byDate.set(key, calcTotalDailyLoss(r.daily_mortality_count, r.cull_count));
   }
-  let end: string | null = null;
-  for (const key of byDate.keys()) {
-    if (!end || key > end) end = key;
-  }
-  if (!end) return 0;
+  const newestFirst = [...byDate.keys()].sort((a, b) => b.localeCompare(a));
   let total = 0;
-  for (let i = 0; i < 7; i++) {
-    const key = addDaysKey(end, -i);
-    if (place && key < place) continue;
-    const r = byDate.get(key);
-    if (r) total += calcTotalDailyLoss(r.daily_mortality_count, r.cull_count);
+  for (const key of newestFirst.slice(0, 7)) {
+    total += byDate.get(key) ?? 0;
   }
   return total / 7;
 }

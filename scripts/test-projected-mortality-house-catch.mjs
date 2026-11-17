@@ -218,57 +218,14 @@ assert.equal(averageDailyMortalityLast7Days(singleDay, asOf), 10);
 assert.equal(projectedMortalityAtCatch(70, 10, 5), 120);
 console.log("projected-mortality-house-catch: single filled day 70 → avg 10, proj 120");
 
-// Entry behind today: window ends on last entered day, not diluted by trailing blanks.
-const behindToday = [
-  {
-    mortalityDate: "2026-11-10",
-    birdAgeInDays: 33,
-    dailyMortalityCount: 14,
-    cullCount: 0,
-    totalDailyLoss: 14,
-  },
-  {
-    mortalityDate: "2026-11-09",
-    birdAgeInDays: 32,
-    dailyMortalityCount: 14,
-    cullCount: 0,
-    totalDailyLoss: 14,
-  },
-  {
-    mortalityDate: "2026-11-08",
-    birdAgeInDays: 31,
-    dailyMortalityCount: 14,
-    cullCount: 0,
-    totalDailyLoss: 14,
-  },
-  {
-    mortalityDate: "2026-11-07",
-    birdAgeInDays: 30,
-    dailyMortalityCount: 14,
-    cullCount: 0,
-    totalDailyLoss: 14,
-  },
-  {
-    mortalityDate: "2026-11-06",
-    birdAgeInDays: 29,
-    dailyMortalityCount: 14,
-    cullCount: 0,
-    totalDailyLoss: 14,
-  },
-  {
-    mortalityDate: "2026-11-05",
-    birdAgeInDays: 28,
-    dailyMortalityCount: 14,
-    cullCount: 0,
-    totalDailyLoss: 14,
-  },
-  {
-    mortalityDate: "2026-11-04",
-    birdAgeInDays: 27,
-    dailyMortalityCount: 14,
-    cullCount: 0,
-    totalDailyLoss: 14,
-  },
-];
-assert.equal(averageDailyMortalityLast7Days(behindToday, asOf), 14);
-console.log("projected-mortality-house-catch: behind today → avg from last entered week = 14");
+// Last 7 entered days (Wk6=133), empty current week → 19/day × 8 days left.
+const weekSix = [7, 8, 9, 10, 11, 12, 13].map((day) => ({
+  mortalityDate: `2026-11-${String(day).padStart(2, "0")}`,
+  birdAgeInDays: 29 + (day - 4),
+  dailyMortalityCount: 19,
+  cullCount: 0,
+  totalDailyLoss: 19,
+}));
+assert.equal(averageDailyMortalityLast7Days(weekSix, asOf), 19);
+assert.equal(projectedMortalityAtCatch(1521, 19, 8), 1673);
+console.log("projected-mortality-house-catch: Wk6 133 → avg 19, +8 days → proj 1673");

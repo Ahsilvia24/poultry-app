@@ -337,17 +337,41 @@ export function lastEnteredMortalityDateKey(
 }
 
 /**
- * Daily average for Proj. Mortality: always (sum of last 7 daily boxes) ÷ 7.
- * Window ends on the latest day with data entered (not today when entry is behind).
- * One filled day and six blanks → that day ÷ 7 (blanks are 0, divisor stays 7).
+ * Sum of the most recent days that have mortality data entered (up to `limit`).
+ * Skips blank calendar days — used so an empty current week does not dilute Wk6.
+ * A saved 0 still counts as entered.
+ */
+export function sumMortalityLastEnteredDays(
+  records: MortalityRecordLike[],
+  asOfDate: Date | string = new Date(),
+  limit = 7,
+): number {
+  const asOfKey = toDateKey(asOfDate);
+  if (!asOfKey || limit <= 0) return 0;
+  const byDate = new Map<string, number>();
+  for (const record of records) {
+    const key = toDateKey(record.mortalityDate);
+    if (!key || key > asOfKey) continue;
+    byDate.set(key, calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount));
+  }
+  const newestFirst = [...byDate.keys()].sort((a, b) => b.localeCompare(a));
+  let total = 0;
+  for (const key of newestFirst.slice(0, limit)) {
+    total += byDate.get(key) ?? 0;
+  }
+  return total;
+}
+
+/**
+ * Daily average for Proj. Mortality: (sum of last 7 days with data entered) ÷ 7.
+ * Blank calendar days are skipped when picking those days, so an empty Wk7 does
+ * not dilute a full Wk6 (e.g. 133 → 19/day). Fewer than 7 entered days still ÷ 7.
  */
 export function averageDailyMortalityLast7Days(
   records: MortalityRecordLike[],
   asOfDate: Date | string = new Date(),
 ): number {
-  const endKey = lastEnteredMortalityDateKey(records, asOfDate);
-  if (!endKey) return 0;
-  return sumMortalityLast7Days(records, endKey) / 7;
+  return sumMortalityLastEnteredDays(records, asOfDate, 7) / 7;
 }
 
 /**
