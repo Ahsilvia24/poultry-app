@@ -97,6 +97,39 @@ function daysUntilDateKey(fromKey: string, toKey: string): number {
   );
 }
 
+/**
+ * Proj. Mortality daily avg: last 7 daily boxes ending on the latest entered day
+ * (not today when entry is behind). Blanks inside the window count as 0; always ÷ 7.
+ */
+function averageDailyMortalityLast7Entered(
+  records: MortRow[],
+  asOf: string,
+  placementDate?: string | null,
+): number {
+  const place = placementDate?.trim() || null;
+  const byDate = new Map<string, MortRow>();
+  for (const r of records) {
+    if (!r.mortality_date) continue;
+    const key = r.mortality_date.slice(0, 10);
+    if (place && key < place) continue;
+    if (key > asOf) continue;
+    byDate.set(key, r);
+  }
+  let end: string | null = null;
+  for (const key of byDate.keys()) {
+    if (!end || key > end) end = key;
+  }
+  if (!end) return 0;
+  let total = 0;
+  for (let i = 0; i < 7; i++) {
+    const key = addDaysKey(end, -i);
+    if (place && key < place) continue;
+    const r = byDate.get(key);
+    if (r) total += calcTotalDailyLoss(r.daily_mortality_count, r.cull_count);
+  }
+  return total / 7;
+}
+
 function summarizeHouse(
   placed: number,
   records: MortRow[],
@@ -665,8 +698,8 @@ export function getDashboard(board: DashboardBoard = "dashboard") {
       }
       const daysUntilCatch = daysUntilDateKey(today, houseCatch);
       hasProjection = true;
-      // Always (sum of last 7 daily boxes) ÷ 7 — blanks are 0, never ÷ entered days.
-      const avgDaily = s.sevenDay / 7;
+      // Last 7 boxes ending on latest entered day; blanks inside = 0; always ÷ 7.
+      const avgDaily = averageDailyMortalityLast7Entered(records, today, housePlacement);
       projectedHeadSum += Math.max(
         0,
         Math.round(s.remaining - avgDaily * daysUntilCatch - 150),
@@ -1015,18 +1048,23 @@ export function getFarmDetail(farmId: string) {
       status: "Normal",
       weekly: [] as Array<{ week: number; total: number; entered: boolean }>,
     };
+    let mortRecords: MortRow[] = [];
 
     if (hf) {
-      const records = db.getAllSync<MortRow>(
+      mortRecords = db.getAllSync<MortRow>(
         `SELECT mortality_date, bird_age_in_days, daily_mortality_count, cull_count, total_daily_loss
          FROM daily_mortality WHERE house_flock_id = ? AND is_draft = 0 ORDER BY mortality_date ASC`,
         [hf.id],
       );
-      summary = summarizeHouse(hf.placed_bird_count, records, today, housePlacementDate);
+      summary = summarizeHouse(hf.placed_bird_count, mortRecords, today, housePlacementDate);
     }
 
-    // Always (sum of last 7 daily boxes) ÷ 7 — blanks are 0, never ÷ entered days.
-    const avgDaily = summary.sevenDay / 7;
+    // Last 7 boxes ending on latest entered day; blanks inside = 0; always ÷ 7.
+    const avgDaily = averageDailyMortalityLast7Entered(
+      mortRecords,
+      today,
+      housePlacementDate,
+    );
     const projectedHeadCount =
       houseDaysUntilCatch != null
         ? Math.max(0, Math.round(summary.remaining - avgDaily * houseDaysUntilCatch - 150))

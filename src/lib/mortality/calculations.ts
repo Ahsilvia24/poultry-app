@@ -302,7 +302,7 @@ export function summarizeForDate(
  */
 export function sumMortalityLast7Days(
   records: MortalityRecordLike[],
-  asOfDate: Date = new Date(),
+  asOfDate: Date | string = new Date(),
 ): number {
   const byDate = new Map(
     records.map((r) => [
@@ -318,14 +318,36 @@ export function sumMortalityLast7Days(
 }
 
 /**
+ * Latest mortality entry date on or before `asOfDate` (yyyy-MM-dd).
+ * A saved 0 counts as entered; no row means that day is blank.
+ */
+export function lastEnteredMortalityDateKey(
+  records: MortalityRecordLike[],
+  asOfDate: Date | string = new Date(),
+): string | null {
+  const asOfKey = toDateKey(asOfDate);
+  if (!asOfKey) return null;
+  let latest: string | null = null;
+  for (const record of records) {
+    const key = toDateKey(record.mortalityDate);
+    if (!key || key > asOfKey) continue;
+    if (!latest || key > latest) latest = key;
+  }
+  return latest;
+}
+
+/**
  * Daily average for Proj. Mortality: always (sum of last 7 daily boxes) ÷ 7.
+ * Window ends on the latest day with data entered (not today when entry is behind).
  * One filled day and six blanks → that day ÷ 7 (blanks are 0, divisor stays 7).
  */
 export function averageDailyMortalityLast7Days(
   records: MortalityRecordLike[],
-  asOfDate: Date = new Date(),
+  asOfDate: Date | string = new Date(),
 ): number {
-  return sumMortalityLast7Days(records, asOfDate) / 7;
+  const endKey = lastEnteredMortalityDateKey(records, asOfDate);
+  if (!endKey) return 0;
+  return sumMortalityLast7Days(records, endKey) / 7;
 }
 
 /**
